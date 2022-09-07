@@ -3,7 +3,7 @@ title: Introduction to User Authentication for Microservices
 published: false
 description: How to integrate token based authentication into micro-frontends. We will explore Keycloak, SAML, OpenIDConnect, and make sense of the best ways to design these integrations.
 tags: 'security, microservices, keycloak'
-cover_image: ./assets/images/iam.jpeg
+cover_image: ../assets/images/iam.jpeg
 canonical_url: null
 ---
 
