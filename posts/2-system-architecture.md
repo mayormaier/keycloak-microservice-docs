@@ -15,7 +15,7 @@ First, let's take a look at the various services at play in this deployment:
 
 ### VPC Overview
 
-**Virtual Private Clouds (VPCs)** are logically isolated sections of the AWS cloud that act are assigned to one customer. Think of a VPC like a virtual data center in the cloud. Each VPC is divided into **subnets**, each with their own **route table** and set of **security groups**. Subnets are blocks of IP address space within the larger VPC block. Route tables determine how each subnet handles traffic, and security groups act as a host based firewall, but security groups can be applied to multiple hosts. For more information about the structure of VPCs, check out [this article by so and so]().
+**Virtual Private Clouds (VPCs)** are logically isolated sections of the AWS cloud that act are assigned to one customer. Think of a VPC like a virtual data center in the cloud. Each VPC is divided into **subnets**, each with their own **route table** and set of **security groups**. Subnets are blocks of IP address space within the larger VPC block. Route tables determine how each subnet handles traffic, and security groups act as a host based firewall, but security groups can be applied to multiple hosts. For more information about the structure of VPCs, check out [this article by BMC's Joe Hertvik](https://www.bmc.com/blogs/aws-vpc-virtual-private-cloud/).
 
 ### How is Traffic Routed?
 
@@ -29,8 +29,8 @@ Additionally, the **Application Load Balancer** performs TLS termination for our
 
 Next, traffic is routed into the private subnet where our application resources live. We opted to utilize **ECS on EC2** for this deployment, as it affords us the additional control required to meet compliance requirements. In this deployment strategy, containers are scheduled to run on a defined EC2 instance that is managed by the user. Even though this responsibility is on the user, container configuration and management is still defined by the ECS service. One requirement of Application Load Balancers is the definition of multiple subnets across multiple availability zones to schedule containers in. In the event that a container exits or fails a health check, ECS will deploy an instance in another availability zone, and start the container there. Thus, high availability is built into the deployment by default.
 
-Lastly, the deployment reaches the Keycloak container, running the latest [Keycloak Docker image]().
+Lastly, the deployment reaches the Keycloak container, running the latest [Keycloak Docker image](https://quay.io/repository/keycloak/keycloak).
 
 ECS deployments are broken into **Clusters**, which can have many **services** that contain a set of **tasks**. Clusters typically contain all of the services required for a given application. For example, an application with multiple backend services would be grouped into the same cluster. A **Task Definition** is a document that outlines the configuration for an ECS Task. Tasks are essentially containers that are running instances of the task definition. Task definitions can define a variety of configuration items such as the container image URI, environment variables, port mappings, and desired container counts.
 
-Because Keycloak requires a database to function, we've created an EC2 instance to run the database instance. We've chosen MariaDB, but many other options are available [per the Keycloak documentation](). In the future we may upgrade this to a true RDS instance, but for now, EC2 suits our needs.
+Because Keycloak requires a database to function, we've created an EC2 instance to run the database instance. We've chosen MariaDB, but many other options are available [per the Keycloak documentation](https://www.keycloak.org/server/db). In the future we may upgrade this to a true RDS instance, but for now, EC2 suits our needs.
