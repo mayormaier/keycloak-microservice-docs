@@ -1,9 +1,11 @@
 ---
 title: Architecting a Keycloak Deployment in AWS
 published: true
-description: 'How to deploy Keycloak in the cloud.'
+description: How to deploy Keycloak in the cloud.
 tags: 'security, aws, keycloak'
 cover_image: ../assets/images/multi-cloud-IAM.jpeg
+id: 1200689
+date: '2022-09-22T22:31:03Z'
 ---
 Now that we've defined our use case for Keycloak, let's dive in to how we will actually deploy it. Keycloak is designed to support a variety of environments including Docker, Kubernetes, and OpenShift. For our use case, we will be utilizing Amazon Web Services Elastic Container Service (ECS). ECS is a contianer orchestration playform that enables users to deploy their continers to the cloud with minimal overhead. If you've been *baffled* by Kubernetes, I assure you that ECS will be a much better experience.
 
