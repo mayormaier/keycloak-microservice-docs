@@ -11,7 +11,7 @@ Now that we've defined our use case for Keycloak, let's dive in to how we will a
 
 First, let's take a look at the various services at play in this deployment:
 
-![Architecture Diagram](../assets/images/)
+![Architecture Diagram](../assets/images/KeycloakDeployment.jpeg)
 
 ### VPC Overview
 
