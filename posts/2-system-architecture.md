@@ -1,7 +1,8 @@
 ---
 title: Architecting a Keycloak Deployment in AWS
+series: Integrating Authentication Within Microservices
 published: true
-description: How to deploy Keycloak in the cloud.
+description: 'How to deploy Keycloak in the cloud.'
 tags: 'security, aws, keycloak'
 cover_image: ../assets/images/multi-cloud-IAM.jpeg
 id: 1200689
@@ -14,6 +15,8 @@ Now that we've defined our use case for Keycloak, let's dive in to how we will a
 First, let's take a look at the various services at play in this deployment:
 
 ![Architecture Diagram](../assets/images/KeycloakDeployment.jpeg)
+
+[Take a look at the CloudFormation Template for this deployment here]()
 
 ### VPC Overview
 
@@ -36,3 +39,8 @@ Lastly, the deployment reaches the Keycloak container, running the latest [Keycl
 ECS deployments are broken into **Clusters**, which can have many **services** that contain a set of **tasks**. Clusters typically contain all of the services required for a given application. For example, an application with multiple backend services would be grouped into the same cluster. A **Task Definition** is a document that outlines the configuration for an ECS Task. Tasks are essentially containers that are running instances of the task definition. Task definitions can define a variety of configuration items such as the container image URI, environment variables, port mappings, and desired container counts.
 
 Because Keycloak requires a database to function, we've created an EC2 instance to run the database instance. We've chosen MariaDB, but many other options are available [per the Keycloak documentation](https://www.keycloak.org/server/db). In the future we may upgrade this to a true RDS instance, but for now, EC2 suits our needs.
+
+### Configuration Overview
+
+Much of the configuration for this deployment occurs within the Keycloak container's environment variables. In the event that the container needs to be restarted, all of the configuration can be referenced via the container's task definition.
+
