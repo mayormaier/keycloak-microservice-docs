@@ -1,0 +1,438 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  Application:
+    Description: The name of the application we are deploying
+    Type: String
+  Environment:
+    Description: The environment of the applicaiton
+    Type: String
+    AllowedValues:
+      - dev
+      - prod
+  DockerImage:
+    Description: URI of the Docker image to be deployed
+    Type: String
+  KeycloakDBUsername:
+    Description: Username of the Keycloak Database
+    Type: String
+  KeycloakDBHost:
+    Description: Hostname of the Keycloak Database
+    Type: String
+  KeycloakDBSchema:
+    Description: Name of the Keycloak Database
+    Type: String
+  KeycloakDBPasswordArn:
+    Description: SSM Parameter that stores the password of the Keycloak Database
+    Type: String
+  KeycloakHostname:
+    Description: CNAME of the Keycloak service
+    Type: String
+  #KeycloakAdminUserArn:
+  #  Description: ARN of the Keycloak Admin Userame
+  #  Type: String
+  #KeycloakAdminPWArn:
+  #  Description: ARN of the Keycloak Admin Password
+  #  Type: String
+  KeyName:
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the ECS instances.
+  KMSKeyId:
+    Type: String
+    Description: KMS Key Arn for SSM Parameter Encryption
+  CloudwatchLogsGroup:
+    Type: String
+    Description: Name of the logs group to use
+  VpcId:
+    Type: 'AWS::EC2::VPC::Id'
+    Description: Select a VPC that allows instances to access the Internet.
+  SubnetId:
+    Type: 'List<AWS::EC2::Subnet::Id>'
+    Description: Select at least two subnets in your selected VPC.
+  DesiredCapacity:
+    Type: Number
+    Default: '1'
+    Description: Number of instances to launch in your ECS cluster.
+  MaxSize:
+    Type: Number
+    Default: '1'
+    Description: Maximum number of instances that can be launched in your ECS cluster.
+  ECSAmiId:
+    Description: AMI ID of the ECS Image
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+  EcsSecurityGroup:
+    Description: Security Group for ECS Containers
+    Type: List<AWS::EC2::SecurityGroup::Id>
+  ElbSecurityGroup:
+    Description: Security Group for ELB
+    Type: List<AWS::EC2::SecurityGroup::Id>
+  ElbSSLCertArn:
+    Description: Arn of the ACM TLS Certificate
+    Type: String
+  InstanceType:
+    Description: Instance Class for the ECS Instances
+    AllowedValues:
+      - t3.medium
+      - t3.large
+      - t3.xlarge
+    Type: String
+  NessusAgentUri:
+    Description: Uri of the Nessus agent RPM
+    Type: String
+  NessusAgentKey:
+    Description: Key for the Nessus Agent Deployment
+    Type: String
+    NoEcho: True
+  NessusAgentGrp:
+    Description: Group for the Nessus Agent Deployment
+    Type: String
+  PublicSubnetId:
+    Description: The public subnet that the load balancer will be placed in
+    Type: List<AWS::EC2::Subnet::Id>
+
+Resources:
+  ECSCluster:
+    Type: 'AWS::ECS::Cluster'
+    Properties:
+      Tags: 
+      - Key: Application
+        Value: !Ref Application
+      - Key: Environment
+        Value: !Ref Environment
+  
+  WebTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties: 
+      ContainerDefinitions: 
+        - Command:
+            - start
+          Environment:
+            - Name: KC_DB
+              Value: "mariadb"
+            - Name: KC_DB_USERNAME
+              Value: !Ref KeycloakDBUsername
+            - Name: KC_DB_URL_HOST
+              Value: !Ref KeycloakDBHost
+            - Name: KC_DB_SCHEMA
+              Value: !Ref KeycloakDBSchema
+            - Name: KC_DB_URL_DATABASE
+              Value: !Ref KeycloakDBSchema
+            - Name: KC_PROXY
+              Value: "edge"
+            - Name: KC_PROXY_ADDRESS_FORWARDING
+              Value: "true"
+            - Name: KC_HEALTH_ENABLED
+              Value: "true"
+            - Name: KC_HTTP_ENABLED
+              Value: "true"
+            - Name: KC_HTTP_PORT
+              Value: "80"
+            - Name: KC_HOSTNAME
+              Value: !Ref KeycloakHostname
+          Secrets:
+            - Name: KC_DB_PASSWORD
+              ValueFrom: !Ref KeycloakDBPasswordArn
+            #- Name: KEYCLOAK_ADMIN
+            #  ValueFrom: !Ref KeycloakAdminUserArn
+            #- Name: KEYCLOAK_ADMIN_PASSWORD
+            #  ValueFrom: !Ref KeycloakAdminPWArn
+          Essential: true
+          Image: !Ref DockerImage
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref CloudwatchLogsGroup
+              awslogs-region: !Ref 'AWS::Region'
+              awslogs-stream-prefix: !Sub ecs-${Application}-${Environment}
+          Name: !Sub ${Application}-${Environment}
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+      Cpu: "512"
+      Family: !Sub ${Application}-${Environment}-web
+      Memory: "2048"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - EC2
+      Tags: 
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+      ExecutionRoleArn: !Ref EcsTaskExecutionRole
+      TaskRoleArn: !Ref EcsTaskExecutionRole
+      
+  
+  ECSALB:
+    Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
+    Properties:
+      Name: !Sub hax-${Application}-${Environment}-alb
+      Scheme: internet-facing
+      Subnets: !Ref PublicSubnetId
+      SecurityGroups: !Ref ElbSecurityGroup
+      Tags: 
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+  
+  ALBListener:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    DependsOn: ECSServiceRole
+    Properties:
+      DefaultActions:
+        - Order: 1
+          Type: forward
+          TargetGroupArn: !Ref ECSTG
+      Certificates:
+        - CertificateArn: !Ref ElbSSLCertArn
+      LoadBalancerArn: !Ref ECSALB
+      Port: 443
+      Protocol: HTTPS
+  
+  ALBHttpListner:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    DependsOn: ECSServiceRole
+    Properties:
+      DefaultActions:
+        - Order: 1
+          Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Host: "#{host}"
+            Port: 443
+            Path: "/#{path}"
+            Query: "#{query}"
+            StatusCode: HTTP_301
+      LoadBalancerArn: !Ref ECSALB
+      Port: 80
+      Protocol: HTTP
+  
+  ECSTG:
+    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    DependsOn: ECSALB
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: "/health"
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      Matcher: 
+        HttpCode: 200-399
+      Name: !Sub ${Application}-${Environment}-ecs
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref VpcId
+      TargetType: ip
+      Tags: 
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+  
+  ECSAutoScalingGroup:
+    Type: 'AWS::AutoScaling::AutoScalingGroup'
+    Properties:
+      AutoScalingGroupName: !Sub ${Application}-${Environment}-ecs-asg-1
+      VPCZoneIdentifier: !Ref SubnetId
+      LaunchConfigurationName: !Ref ContainerInstances
+      MinSize: '1'
+      MaxSize: !Ref MaxSize
+      DesiredCapacity: !Ref DesiredCapacity
+      Tags: 
+        - Key: Application
+          Value: !Ref Application
+          PropagateAtLaunch: True
+        - Key: Environment
+          Value: !Ref Environment
+          PropagateAtLaunch: True
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+    UpdatePolicy:
+      AutoScalingReplacingUpdate:
+        WillReplace: 'true'
+  
+  ContainerInstances:
+    Type: 'AWS::AutoScaling::LaunchConfiguration'
+    Properties:
+      LaunchConfigurationName: !Sub ${Application}-${Environment}-ecs-launch-1
+      ImageId: !Ref ECSAmiId
+      SecurityGroups: !Ref EcsSecurityGroup
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      KeyName: !Ref KeyName
+      UserData: !Base64 
+        Fn::Sub: |
+          #!/bin/bash
+          yum install -y aws-cfn-bootstrap
+          yum install -y unzip
+          echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install 
+          /usr/local/bin/aws s3 cp ${NessusAgentUri} .
+          rpm -ivh NessusAgent-*.rpm
+          /opt/nessus_agent/sbin/nessuscli agent link --key=${NessusAgentKey} --groups=${NessusAgentGrp} --cloud
+          service nessusagent stop
+          /opt/nessus_agent/sbin/nessusd -R
+          service nessusagent start
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource ECSAutoScalingGroup --region ${AWS::Region}
+
+  service:
+    Type: 'AWS::ECS::Service'
+    DependsOn: ALBListener
+    Properties:
+      Cluster: !Ref ECSCluster
+      DesiredCount: 1
+      HealthCheckGracePeriodSeconds: 300
+      LoadBalancers:
+        - ContainerName: !Sub ${Application}-${Environment}
+          ContainerPort: 80
+          TargetGroupArn: !Ref ECSTG
+      NetworkConfiguration:
+        AwsvpcConfiguration: 
+          AssignPublicIp: DISABLED
+          SecurityGroups: !Ref EcsSecurityGroup
+          Subnets: !Ref SubnetId
+      Role: !Ref ECSServiceRole
+      TaskDefinition: !Ref WebTaskDefinition
+      Tags: 
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+  
+  ECSServiceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: ecs-service
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'elasticloadbalancing:DeregisterInstancesFromLoadBalancer'
+                  - 'elasticloadbalancing:DeregisterTargets'
+                  - 'elasticloadbalancing:Describe*'
+                  - 'elasticloadbalancing:RegisterInstancesWithLoadBalancer'
+                  - 'elasticloadbalancing:RegisterTargets'
+                  - 'ec2:Describe*'
+                  - 'ec2:AuthorizeSecurityGroupIngress'
+                Resource: '*'
+      Tags: 
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+  
+  EcsTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2008-10-17"
+        Statement: 
+          - Sid: ""
+            Effect: "Allow"
+            Principal:
+              Service: "ecs-tasks.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Description: "Allows ECS to execute core responsibilities"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+      Policies:
+        - PolicyName: !Sub ${Application}-${Environment}-ecs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:CreateLogGroup
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${CloudwatchLogsGroup}
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${CloudwatchLogsGroup}:*
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameters
+                Resource: 
+                  - !Ref KeycloakDBPasswordArn
+                  #- !Ref KeycloakAdminUserArn
+                  #- !Ref KeycloakAdminPWArn
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/${KMSKeyId}
+      RoleName: !Sub ${Application}-${Environment}-ecs-task
+      Tags: 
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+  
+  EC2Role:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Sub arn:aws:iam::${AWS::AccountId}:policy/S3NessusAgentAccess
+      Path: /
+      Policies:
+        - PolicyName: ecs-service
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ecs:CreateCluster'
+                  - 'ecs:DeregisterContainerInstance'
+                  - 'ecs:DiscoverPollEndpoint'
+                  - 'ecs:Poll'
+                  - 'ecs:RegisterContainerInstance'
+                  - 'ecs:StartTelemetrySession'
+                  - 'ecs:Submit*'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: '*'
+      Tags: 
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+  
+  EC2InstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: /
+      Roles:
+        - !Ref EC2Role
+
+Outputs:
+  ecsservice:
+    Value: !Ref service
+  ecscluster:
+    Value: !Ref ECSCluster
+  ECSALB:
+    Description: Your ALB DNS URL
+    Value: !GetAtt ECSALB.DNSName
+  taskdef:
+    Value: !Ref WebTaskDefinition
