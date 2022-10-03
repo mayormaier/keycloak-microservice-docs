@@ -2,7 +2,7 @@
 title: Architecting a Keycloak Deployment in AWS
 series: Integrating Authentication Within Microservices
 published: true
-description: 'How to deploy Keycloak in the cloud.'
+description: How to deploy Keycloak in the cloud.
 tags: 'security, aws, keycloak'
 cover_image: ../assets/images/multi-cloud-IAM.jpeg
 id: 1200689
