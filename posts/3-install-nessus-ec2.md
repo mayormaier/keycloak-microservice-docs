@@ -2,8 +2,10 @@
 title: Installing Nessus Agents on AWS EC2
 series: Integrating Authentication Within Microservices
 published: true
-description: 'How to improve security in the cloud with Nessus vulnerability scanning on AWS EC2'
+description: How to improve security in the cloud with Nessus vulnerability scanning on AWS EC2
 tags: 'security, aws, cloud'
+id: 1210122
+date: '2022-10-03T18:07:34Z'
 ---
 Public cloud services like AWS make it easy to create scalable resources that expand and contract with load. While this solves many operational IT problems, it fails to address them securely.
 
