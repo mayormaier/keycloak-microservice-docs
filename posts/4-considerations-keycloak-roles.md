@@ -11,9 +11,9 @@ Now that we have Keycloak up and running, we are ready to start configuring it f
 
 What are roles exactly? Keycloak defines roles as the following:
 
-*"A type or category of user. Applications often assign access and permissions to specific roles rather than individual users as dealing with users can be too fine grained and hard to manage.*
+> *"A type or category of user. Applications often assign access and permissions to specific roles rather than individual users as dealing with users can be too fine grained and hard to manage.*
 
-*"A user role mapping defines a mapping between a role and a user. A user can be associated with zero or more roles. This role mapping information can be encapsulated into tokens and assertions so that applications can decide access permissions on various resources they manage."*
+> *"A user role mapping defines a mapping between a role and a user. A user can be associated with zero or more roles. This role mapping information can be encapsulated into tokens and assertions so that applications can decide access permissions on various resources they manage."*
 
 One important thing to get started with Keycloak is to understand that it does **NOT** link roles to *application specific* permissions. Instead, permissions must be assigned within the application (or microservice). With that being said, we should consider how to organize groups of users based on the level of permissions that they require, and also decide any global roles that have implications across all applications (e.g., Admin, default role, etc.)
 
