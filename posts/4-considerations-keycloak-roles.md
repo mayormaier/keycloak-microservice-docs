@@ -2,9 +2,10 @@
 title: Considerations for Creating Keycloak Roles
 series: Integrating Authentication Within Microservices
 published: false
-description: 'How I plan to organize roles in my Keycloak instance'
+description: How I plan to organize roles in my Keycloak instance
 tags: 'security, microservices, keycloak'
 cover_image: ../assets/images/App-Lock.jpeg
+id: 1213687
 ---
 
 Now that we have Keycloak up and running, we are ready to start configuring it for our microservices. A large part of keycloak is the concept of *roles*
