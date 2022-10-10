@@ -12,7 +12,7 @@ Now that we have Keycloak up and running, we are ready to start configuring it f
 
 What are roles exactly? Keycloak defines roles as the following:
 
-> *"A type or category of user. Applications often assign access and permissions to specific roles rather than individual users as dealing with users can be too fine grained and hard to manage.*
+> *"Roles are type or category of user. Applications often assign access and permissions to specific roles rather than individual users as dealing with users can be too fine grained and hard to manage.*
 
 > *"A user role mapping defines a mapping between a role and a user. A user can be associated with zero or more roles. This role mapping information can be encapsulated into tokens and assertions so that applications can decide access permissions on various resources they manage."*
 
@@ -27,6 +27,35 @@ A **composite role** is a role that can be associated with other roles. For exam
 **Client scopes** define protocol mappers (configuration to pass specific user attributes) and role scope mappings for that client. 
 
 With **client roles**, clients can define roles that are specific to them. This is basically a role namespace dedicated to the client.
+
+## Proposed Role Structure
+
+Typically, Keycloak role structures mimic organizational structure, where each role is related to a specific job title. This makes sense in cases which job titles and roles do not change frequently. In our case, we must consider the educational environment, where there are 3-5 job titles: Administrator, Professor, Student, etc. Clearly, we need to have more granular control.
+
+### Global Roles
+
+Global Roles apply to all applications within the realm. These are more applicable to Administrative permissions and developers.
+
+**Examples:**
+**Site Admin:** global.admin (i.e., access to global application configuration)
+**Site Developer:** global.dev (i.e., access to test and development resources)
+
+### Application Specific Roles
+
+Application Specific Roles limit the types of actions that users may take in a specific application. For example, These roles could be used to grant user access to create new content within the application or adjust global settings.
+
+Examples:
+Application User: <application>.user (i.e., create new application resources and manage their own)
+Application Admin: <application>.admin (i.e., access to application specific configuration)
+
+### Site Specific Roles
+
+Application Specific roles are a subset of application specific roles. They grant user access to individual sites within an application, and make it possible to provide different permissions for different microservices. For example, A user could have read access to site content, but write access to create comments on that site.
+
+Examples:
+Site Admin: <application>.<site-uid>.admin (i.e., manage site settings and content)
+Service User: <application>.<site-uid>.user (i.e., view/edit/update created service content)
+
 
 ## References
 
