@@ -158,7 +158,7 @@ Resources:
           Value: !Ref Application
         - Key: Environment
           Value: !Ref Environment
-      ExecutionRoleArn: !Ref EcsTaskExecutionRole
+      ExecutionRoleArn: !GetAtt EcsTaskExecutionRole.Arn
       TaskRoleArn: !Ref EcsTaskExecutionRole
       
   
@@ -235,7 +235,9 @@ Resources:
     Properties:
       AutoScalingGroupName: !Sub ${Application}-${Environment}-ecs-asg-1
       VPCZoneIdentifier: !Ref SubnetId
-      LaunchConfigurationName: !Ref ContainerInstances
+      LaunchTemplate:
+        LaunchTemplateId: !Ref ContainerInstanceTemplate
+        Version: !GetAtt ContainerInstanceTemplate.LatestVersionNumber
       MinSize: '1'
       MaxSize: !Ref MaxSize
       DesiredCapacity: !Ref DesiredCapacity
@@ -251,33 +253,35 @@ Resources:
         Timeout: PT15M
     UpdatePolicy:
       AutoScalingReplacingUpdate:
-        WillReplace: 'true'
+        WillReplace: true
   
-  ContainerInstances:
-    Type: 'AWS::AutoScaling::LaunchConfiguration'
+  ContainerInstanceTemplate:
+    Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchConfigurationName: !Sub ${Application}-${Environment}-ecs-launch-1
-      ImageId: !Ref ECSAmiId
-      SecurityGroups: !Ref EcsSecurityGroup
-      InstanceType: !Ref InstanceType
-      IamInstanceProfile: !Ref EC2InstanceProfile
-      KeyName: !Ref KeyName
-      UserData: !Base64 
-        Fn::Sub: |
-          #!/bin/bash
-          yum install -y aws-cfn-bootstrap
-          yum install -y unzip
-          echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install 
-          /usr/local/bin/aws s3 cp ${NessusAgentUri} .
-          rpm -ivh NessusAgent-*.rpm
-          /opt/nessus_agent/sbin/nessuscli agent link --key=${NessusAgentKey} --groups=${NessusAgentGrp} --cloud
-          service nessusagent stop
-          /opt/nessus_agent/sbin/nessusd -R
-          service nessusagent start
-          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource ECSAutoScalingGroup --region ${AWS::Region}
+      LaunchTemplateName: !Sub ${Application}-${Environment}-ecs
+      LaunchTemplateData:
+        ImageId: !Ref ECSAmiId
+        SecurityGroupIds: !Ref EcsSecurityGroup
+        InstanceType: !Ref InstanceType
+        IamInstanceProfile: 
+          Arn: !GetAtt EC2InstanceProfile.Arn
+        KeyName: !Ref KeyName
+        UserData: !Base64 
+          Fn::Sub: |
+            #!/bin/bash
+            yum install -y aws-cfn-bootstrap
+            yum install -y unzip
+            echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install 
+            /usr/local/bin/aws s3 cp ${NessusAgentUri} .
+            rpm -ivh NessusAgent-*.rpm
+            /opt/nessus_agent/sbin/nessuscli agent link --key=${NessusAgentKey} --groups=${NessusAgentGrp} --cloud
+            service nessusagent stop
+            /opt/nessus_agent/sbin/nessusd -R
+            service nessusagent start
+            /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource ECSAutoScalingGroup --region ${AWS::Region}
 
   service:
     Type: 'AWS::ECS::Service'
