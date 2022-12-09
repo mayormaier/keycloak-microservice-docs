@@ -5,6 +5,8 @@ published: true
 description: Designing a full stack system that implements Keycloak authentication to enable federated access.
 tags: 'security, microservices, keycloak'
 cover_image: ../assets/images/playbook.png
+id: 1290975
+date: '2022-12-09T22:52:33Z'
 ---
 
 Now that our authentication system is in place, client is created, and frontend assets are in motion, we will explore how authentication can be implemented into a micro-frontend component. The intended use case would be that this micro frontend could operate alone, or inside of a larger content system with other components that require authentication.
