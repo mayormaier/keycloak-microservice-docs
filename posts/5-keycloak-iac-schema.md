@@ -5,6 +5,7 @@ published: false
 description: Designing an infrastructure as code solution for keycloak client deployments.
 tags: 'security, microservices, keycloak'
 cover_image: ../assets/images/App-Lock.jpeg
+id: 1278966
 ---
 
 We last discussed how to structure our Keycloak role organization within a microservice deployment context. This discussion provides the foundation for what we will discuss today: leveraging [Infrastructure as Code (IAC)](https://www.redhat.com/en/topics/automation/what-is-infrastructure-as-code-iac) to deploy Keycloak clients and roles easily. The goal for this project is to easily add additional microservice integrations to Keycloak so that they can be set up with minimal configuration. The tool will come as a lightweight CLI that interacts with a Keycloak server deployment to perform the client and role creation. THe tool will also provide smart defaults so new users can take advantage of this service without a full understanding of each setting.
