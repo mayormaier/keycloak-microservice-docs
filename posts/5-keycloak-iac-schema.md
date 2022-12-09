@@ -1,7 +1,7 @@
 ---
 title: Deploy Keycloak Clients and Roles with Code
 series: Integrating Authentication Within Microservices
-published: false
+published: true
 description: Designing an infrastructure as code solution for keycloak client deployments.
 tags: 'security, microservices, keycloak'
 cover_image: ../assets/images/App-Lock.jpeg
@@ -12,34 +12,41 @@ We last discussed how to structure our Keycloak role organization within a micro
 
 ## Proposed IaC Schema
 
-Here is a link to the schema
+Here is a [link to the JSON schema](https://github.com/elmsln/kraxen/blob/main/keycloak-deploy.schema.json)
+Here is a [link to the schema documentation](https://github.com/mayormaier/keycloak-microservice-docs/blob/main/resources/keycloak-schema-docs.md)
 
-Here is a table with each configuration object and description:
+The proposed schema for this tool breaks down the Keycloak client configuration into more manageable and modular segments to ease template creation. For example, in this simple example, the hierarchical nature of the template enables users to specify their client features more easily.
 
-## Client Settings
+## Usage
 
-| setting                            | description                                                                                                                                                  | type   | required | default  |
-|------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|--------|----------|----------|
-| client-name                        | Specifies display name of the client. For example 'My Client'.                                                                                               | String | false    |          |
-| client-id                          | Specifies ID referenced in URI and tokens. For example 'my-client'.                                                                                          | String | true     |          |
-| client-type                        | Specifies whether to use Open ID Connect or SAML for the client. Value must be 'oidc', or 'saml'                                                             | String | true     |          |
-| client-oidc-client-authentication  | Defines the type of the OIDC client. When it's 'true', the OIDC type is set to confidential access type. When it's 'false', it is set to public access type. | Bool   | false    | false    |
-| client-oidc-authorization          | Enable/Disable fine-grained authorization support for a client. Specify when client-oidc-client-authentication is 'true'                                     | Bool   | false    |          |
-| client-oidc-authentication-flow    | The selected OIDC Authentication Flow type.                                                                                                                  | List   | false    |          |
-| client-access-root-url             | Root URL appended to relative URLs.                                                                                                                          | String | false    |          |
-| client-access-home-url             | Default URL to use when the auth server needs to redirect or link back to the client.                                                                        | String | false    |          |
-| client-access-redirect-uris        | Valid URI pattern a browser can redirect to after a successful login. Wildcards and relative paths may be used.                                              | List   | false    |          |
-| client-access-logout-redirect-uris | Valid URI pattern a browser can redirect to after a successful logout. A value of '+' will use the list of redirect uris.                                    | List   | false    |          |
-| client-access-web-origins          | Allowed CORS origins. To permit all origins of Redirect URIs, add '+'.                                                                                       | List   | false    |          |
-| client-access-admin-url            | URL to the admin interface of the client. Set this if the client supports the adapter REST API.                                                              | String | false    |          |
-| client-login-theme                 | Theme to use for keycloak pages.                                                                                                                             | String | false    | base     |
-| client-login-consent               | If enabled, users have to consent to client access.                                                                                                          | Bool   | false    | false    |
-| client-login-display-client        | Applicable only if 'consent' is defined for this client. If 'true', there will be an item on the consent screen about this client itself.                    | Bool   | false    | false    |
-| client-login-consent-text          | Applicable only if 'display-client' is 'true' for this client. Contains the text which will be on the consent screen about permissions for this client.      | String | false    |          |
-| client-logout-front-channel        | If 'true', logout requires a browser redirect to client. If 'false', server performs a background invocation for logout.                                     | Bool   | false    | true     |
-| client-logout-front-channel-url    | URL that will cause the client to log itself out when a logout request is sent to this realm.                                                                | String | false    | base-url |
-| client-logout-back-channel-url     | URL that will cause the client to log itself out when a logout request is sent to this realm. If omitted, no logout request will be sent to the client.      | String | false    |          |
-| client-logout-back-channel-session | Specifying whether a sid (session ID) Claim is included in the Logout Token when the Backchannel Logout URL is used.                                         | Bool   | false    |          |
-| client-logout-back-channel-revoke  | Specifying whether a "revoke_offline_access" event is included in the Logout Token when the Backchannel Logout URL is used.                                  | Bool   | false    | false    |
-|                                    |                                                                                                                                                              |        |          |          |
-|                                    |                                                                                                                                                              |        |          |          |
+In order to run the kraxen CLI, you must have NPM installed.
+Install the CLI tool, aka Kraxen, by cloning the kraxen repository and installing it globally:
+
+```bash
+git clone https://github.com/elmsln/kraxen && cd kraxen
+npm install -g .
+```
+
+Firstly, a configuration file for kraxen (`.kraxen`) must be created in either a user's home directory, or the current working directory. The configuration file must specify three things: `KEYCLOAK_HOST`, `KEYCLOAK_ADMIN_USERNAME`, and `KEYCLOAK_ADMIN_PASSWORD`:
+
+```
+KEYCLOAK_HOST=https://keycloak-host.org
+KEYCLOAK_ADMIN_USERNAME=user
+KEYCLOAK_ADMIN_PASSWORD=password
+```
+
+These values can also be set via environment variables.
+
+Next, the configuration file for the client must be created. These configuration files are YAML files that define attributes of a Keycloak client that kraxen will create. Kraxen is configured to set smart defaults for a decoupled application that implements OIDC authentication. The only required values are the `clientId`, `protocol`, `realm` settings. Most of the other settings are set as smart defaults and can be overridden via the YAML configuration file. [See an example of a template here.](https://github.com/elmsln/kraxen/blob/main/testclient_kc.yaml)
+
+Lastly, we can run the kraxen CLI and watch our template create!
+
+```
+kraxen -t template-file.yaml -c kraxen-config
+```
+
+The `-c` flag can be omitted if the `.kraxen` configuration is present in the user's home directory.
+
+## Final Notes
+
+This initial executable is just a simple proof-of-concept model to demonstrate how Keycloak APIs can be leveraged to programmatically create clients and roles for use within an application. In the future, the CLI will scaffold out the template based on prompts that a user enters. It will also include sub-commands such as `kraxen init` to begin CLI setup, `kraxen create` to create a new set of Keycloak clients and roles, and `kraxen sync` to update the client configuration to match the current template. I hope to use the great example of elmsln's wcfactory tool to build a more robust CLI that can integrate even more features.
