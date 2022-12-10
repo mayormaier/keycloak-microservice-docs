@@ -51,3 +51,5 @@ The `-c` flag can be omitted if the `.kraxen` configuration is present in the us
 ## Final Notes
 
 This initial executable is just a simple proof-of-concept model to demonstrate how Keycloak APIs can be leveraged to programmatically create clients and roles for use within an application. In the future, the CLI will scaffold out the template based on prompts that a user enters. It will also include sub-commands such as `kraxen init` to begin CLI setup, `kraxen create` to create a new set of Keycloak clients and roles, and `kraxen sync` to update the client configuration to match the current template. I hope to use the great example of elmsln's wcfactory tool to build a more robust CLI that can integrate even more features.
+
+Lastly, I would like to shout out coveooss and their [JSON Schema For Humans tool](https://github.com/coveooss/json-schema-for-humans), which allowed me to produce markdown documentation for the Infrastructure as Code schema that I defined above. Kudos!
